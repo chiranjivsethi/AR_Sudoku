@@ -1,1 +1,4 @@
 .vscode
+digit_recognition_model/test.csv
+digit_recognition_model/train.csv
+digit_recognition_model/sample_submission.csv
