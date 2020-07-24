@@ -3,16 +3,28 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
-def get_sudoku_grid_contour(img):
-    contours, hirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours = sorted(contours, key=lambda x: cv2.contourArea(x), reverse=True)
-    return contours
+def resize_image(img, size=800):
+    old_height, old_width = img.shape[:2]
+    if img.shape[0] >= size:
+        aspect_ratio = size / float(old_height)
+        dim = (int(old_width * aspect_ratio), size)
+        img = cv2.resize(img, dim, interpolation=cv2.INTER_LANCZOS4)
+    elif img.shape[1] >= size:
+        aspect_ratio = size / float(old_width)
+        dim = (size, int(old_height * aspect_ratio))
+        img = cv2.resize(img, dim, interpolation=cv2.INTER_LANCZOS4)
+    return img
 
 def process_image(img):
     img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
     img = cv2.GaussianBlur(img,(5,5),1)
     img = cv2.adaptiveThreshold(img, 255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,11,2)
     return img
+
+def get_sudoku_grid_contour(img):
+    contours, hirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = sorted(contours, key=lambda x: cv2.contourArea(x), reverse=True)
+    return contours
 
 def get_contour_corners(contours):
     contour = np.squeeze(contours[0])
@@ -57,6 +69,7 @@ if __name__ == "__main__":
 if __name__ == "__main__":
     test_image  = cv2.imread('test_image.jpg')
     #cv2.imshow("Original",test_image)
+    test_image = resize_image(test_image)
 
     processed_image = process_image(test_image)
     #cv2.imshow("processed Image",processed_image)
@@ -67,6 +80,6 @@ if __name__ == "__main__":
 
     corner = get_contour_corners(contours)
     warped_image = warp_image(corner,processed_image)
-    #cv2.imshow("warped image",warped_image)
+    cv2.imshow("warped image",warped_image)
 
     cv2.waitKey(0)
