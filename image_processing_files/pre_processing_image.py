@@ -25,7 +25,8 @@ if __name__ == "__main__":
 
     image = cv2.imread(args["input"])
     image = preprocessing_image(image)
-    cv2.imshow("Pre Processed Image", image)
+    cv2.imshow("Preprocessed Image", image)
+    cv2.imwrite("Preprocessed_Image.jpg",image)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
