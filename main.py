@@ -1,33 +1,25 @@
 #Dependencies
 import cv2
-import matplotlib.pyplot as plt
+import imutils
 import numpy as np
 
-def resize_image(img, size=800):
-    old_height, old_width = img.shape[:2]
-    if img.shape[0] >= size:
-        aspect_ratio = size / float(old_height)
-        dim = (int(old_width * aspect_ratio), size)
-        img = cv2.resize(img, dim, interpolation=cv2.INTER_LANCZOS4)
-    elif img.shape[1] >= size:
-        aspect_ratio = size / float(old_width)
-        dim = (size, int(old_height * aspect_ratio))
-        img = cv2.resize(img, dim, interpolation=cv2.INTER_LANCZOS4)
-    return img
-
-def process_image(img):
-    img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    img = cv2.GaussianBlur(img,(5,5),1)
-    img = cv2.adaptiveThreshold(img, 255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,11,2)
-    return img
+def preprocessing_image(img):
+    #kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2)) #kernel for dilation after adaptive thresholding
+    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY) #Conver to Grayscale
+    blur = cv2.GaussianBlur(gray,(5,5),0) #Denoise using gaussian blur of kernel (5,5)
+    thresh = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2) #adaptive threshold
+    #morph = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+    #dilated = cv2.dilate(morph, kernel, iterations=1)
+    return thresh
 
 def get_sudoku_grid_contour(img):
-    contours, hirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours = sorted(contours, key=lambda x: cv2.contourArea(x), reverse=True)
-    return contours
+    c, h = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    c = sorted(c, key=lambda x: cv2.contourArea(x), reverse=True)
+    return c
 
-def get_contour_corners(contours):
-    contour = np.squeeze(contours[0])
+def get_sudoku_grid_corners(c):
+    contour = np.squeeze(c[0])
+
     sums = [sum(i) for i in contour]
     differences = [i[0] - i[1] for i in contour]
 
@@ -36,10 +28,11 @@ def get_contour_corners(contours):
     bottom_left = np.argmax(sums)
     bottom_right = np.argmin(differences)
 
-    corners = [contour[top_left], contour[top_right], contour[bottom_left], contour[bottom_right]]
+    corners = [contour[top_left], contour[top_right], contour[bottom_left],
+               [bottom_right]]
     return corners
 
-def warp_image(corners,img):
+def warp_image(corners, img):
     (tl, tr, br, bl) = corners
     widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
     widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
@@ -49,37 +42,34 @@ def warp_image(corners,img):
     maxHeight = max(int(heightA), int(heightB))
     dst = np.array([[0, 0], [maxWidth - 1, 0], [maxWidth - 1, maxHeight - 1], [0, maxHeight - 1]], dtype = "float32")
     M = cv2.getPerspectiveTransform(np.float32(corners), dst)
-    img = cv2.warpPerspective(img, M, (maxWidth, maxHeight))
-    return img
-'''
-if __name__ == "__main__":
-    
-    Video = cv2.VideoCapture(0) 
-  
-    while(True): 
-        ret, frame = Video.read()
-
-        if cv2.waitKey(1) & 0xFF == ord('q'): 
-            break
-  
-    vid.release() 
-    cv2.destroyAllWindows()
-'''
+    warped_image = cv2.warpPerspective(img, M, (maxWidth, maxHeight))
+    return warped_image
 
 if __name__ == "__main__":
-    test_image  = cv2.imread('test_image.jpg')
-    #cv2.imshow("Original",test_image)
-    test_image = resize_image(test_image)
+    #Loading Image
+    test_image = cv2.imread('test_image.jpg')
+    print("Image Loaded...")
+    #cv2.imshow("Test Image",test_image)
 
-    processed_image = process_image(test_image)
-    #cv2.imshow("processed Image",processed_image)
+    #Resizeing Image keeping same aspect ratio
+    test_image = imutils.resize(test_image,width=500)
+    print("Image resized...")
+    #cv2.imshow("Resized Image keeping same aspect ratio",test_image)
 
-    contours = get_sudoku_grid_contour(processed_image)
-    cv2.drawContours(test_image, contours, 0, (0, 255, 0), 2)
-    #cv2.imshow("Sudoku Grid Contour",test_image)
+    #Preprocessing Image
+    processed_image = preprocessing_image(test_image)
+    print("Image processed...")
+    #cv2.imshow("Preprocessed Image",processed_image)
 
-    corner = get_contour_corners(contours)
-    warped_image = warp_image(corner,processed_image)
-    cv2.imshow("warped image",warped_image)
+    img = test_image.copy()
+
+    contour = get_sudoku_grid_contour(processed_image)
+    cv2.drawContours(img, contour, 0, (0, 255, 0), 2)
+    cv2.imshow("Sudoku Grid Contour",img)
+
+    corners = get_sudoku_grid_corners(contour)
+
+    #warped_image = warp_image(corners, processed_image)
+    #cv2.imshow("Warped Image",warped_image)    
 
     cv2.waitKey(0)
