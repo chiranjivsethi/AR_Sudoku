@@ -73,6 +73,8 @@ if __name__ == "__main__":
 
     warped_image = warp_perspective(corners, processed_image)
     print("Image warped...")
-    cv2.imshow("Warped Image",warped_image)
+    #cv2.imshow("Warped Image",warped_image)
+
+    
 
     cv2.waitKey(0)
